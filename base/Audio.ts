@@ -1,6 +1,5 @@
 import * as _ from "lodash";
 import {GoldenSun} from "./GoldenSun";
-import {initialize_se} from "./initializers/sound_effects";
 import {Button} from "./XGamepad";
 
 /**
@@ -47,8 +46,24 @@ export class Audio {
         let load_se_promise_resolve;
         const load_se_promise = new Promise(resolve => (load_se_promise_resolve = resolve));
         const se_data = this.game.cache.getJSON("se_data");
-        initialize_se(this.game, this.data, se_data, load_se_promise_resolve);
+        this.initialize_se(se_data, load_se_promise_resolve);
         await load_se_promise;
+    }
+
+    private initialize_se(se_data, load_promise_resolve) {
+        const promises = [];
+        for (let se_key in se_data) {
+            const audio_data = se_data[se_key];
+            const loader = this.game.load.audiosprite(se_key, audio_data.audio, null, audio_data.json);
+            let promise_resolve;
+            promises.push(new Promise(resolve => (promise_resolve = resolve)));
+            loader.onLoadComplete.addOnce(() => {
+                this.add_se(se_key);
+                promise_resolve();
+            });
+        }
+        this.game.load.start();
+        Promise.all(promises).then(load_promise_resolve);
     }
 
     /**
