@@ -1,12 +1,12 @@
-import {TextObj, Window} from "../../Window";
+import { TextObj, Window } from "../../Window";
 import * as numbers from "../../magic_numbers";
-import {GoldenSun} from "../../GoldenSun";
-import {Button} from "../../XGamepad";
-import {ItemSlot, MainChar} from "../../MainChar";
-import {Item} from "../../Item";
-import {ItemQuantityManagerWindow} from "./ItemQuantityManagerWindow";
-import {MainItemMenu} from "../../main_menus/MainItemMenu";
-import {CursorManager, PointVariants} from "../../utils/CursorManager";
+import { GoldenSun } from "../../GoldenSun";
+import { Button } from "../../XGamepad";
+import { ItemSlot, MainChar } from "../../MainChar";
+import { Item } from "../../Item";
+import { ItemQuantityManagerWindow } from "./ItemQuantityManagerWindow";
+import { MainItemMenu } from "../../main_menus/MainItemMenu";
+import { CursorManager, PointVariants } from "../../utils/CursorManager";
 
 const WIN_WIDTH = 132;
 const WIN_HEIGHT = 36;
@@ -33,380 +33,451 @@ const CURSOR_Y1 = 12;
 const CURSOR_Y2 = 28;
 
 export class UseGiveItemWindow {
-    private static readonly ICON_GROUP_KEY = "item_icon";
+  private static readonly ICON_GROUP_KEY = "item_icon";
 
-    public game: Phaser.Game;
-    public data: GoldenSun;
-    public close_callback: Function;
-    public item_menu: MainItemMenu;
+  public game: Phaser.Game;
+  public data: GoldenSun;
+  public close_callback: Function;
+  public item_menu: MainItemMenu;
 
-    public item_obj: ItemSlot;
-    public item: Item;
-    public char: MainChar;
-    public answer_index: number;
+  public item_obj: ItemSlot;
+  public item: Item;
+  public char: MainChar;
+  public answer_index: number;
 
-    public window_open: boolean;
-    public window_active: boolean;
-    public choosing_char: boolean;
-    public asking_for_equip: boolean;
-    public giving: boolean;
+  public window_open: boolean;
+  public window_active: boolean;
+  public choosing_char: boolean;
+  public asking_for_equip: boolean;
+  public giving: boolean;
 
-    public base_window: Window;
-    public item_quantity_manager_window: ItemQuantityManagerWindow;
-    public group: Phaser.Group;
+  public base_window: Window;
+  public item_quantity_manager_window: ItemQuantityManagerWindow;
+  public group: Phaser.Group;
 
-    public action_text: TextObj;
-    public yes_text: TextObj;
-    public no_text: TextObj;
+  public action_text: TextObj;
+  public yes_text: TextObj;
+  public no_text: TextObj;
 
-    public char_name: TextObj;
-    public item_name: TextObj;
+  public char_name: TextObj;
+  public item_name: TextObj;
 
-    constructor(game: Phaser.Game, data: GoldenSun) {
-        this.game = game;
-        this.data = data;
-        this.close_callback = null;
-        this.item_menu = null;
+  constructor(game: Phaser.Game, data: GoldenSun) {
+    this.game = game;
+    this.data = data;
+    this.close_callback = null;
+    this.item_menu = null;
 
-        this.item_obj = null;
-        this.item = null;
-        this.char = null;
-        this.answer_index = 0;
+    this.item_obj = null;
+    this.item = null;
+    this.char = null;
+    this.answer_index = 0;
 
-        this.window_open = false;
-        this.window_active = false;
-        this.choosing_char = false;
-        this.asking_for_equip = false;
-        this.giving = false;
+    this.window_open = false;
+    this.window_active = false;
+    this.choosing_char = false;
+    this.asking_for_equip = false;
+    this.giving = false;
 
-        this.base_window = new Window(this.game, WIN_X, WIN_Y, WIN_WIDTH, WIN_HEIGHT);
-        this.item_quantity_manager_window = null;
-        this.group = this.game.add.group();
+    this.base_window = new Window(
+      this.game,
+      WIN_X,
+      WIN_Y,
+      WIN_WIDTH,
+      WIN_HEIGHT
+    );
+    this.item_quantity_manager_window = null;
+    this.group = this.game.add.group();
 
-        this.char_name = this.base_window.set_text_in_position("", CHAR_NAME_X, CHAR_NAME_Y);
-        this.item_name = this.base_window.set_text_in_position("", ITEM_NAME_X, ITEM_NAME_Y);
-        this.action_text = this.base_window.set_text_in_position("", ACTION_TEXT_X, ACTION_TEXT_Y);
+    this.char_name = this.base_window.set_text_in_position(
+      "",
+      CHAR_NAME_X,
+      CHAR_NAME_Y
+    );
+    this.item_name = this.base_window.set_text_in_position(
+      "",
+      ITEM_NAME_X,
+      ITEM_NAME_Y
+    );
+    this.action_text = this.base_window.set_text_in_position(
+      "",
+      ACTION_TEXT_X,
+      ACTION_TEXT_Y
+    );
 
-        this.yes_text = this.base_window.set_text_in_position("Yes", ANSWER_X, YES_Y);
-        this.no_text = this.base_window.set_text_in_position("No", ANSWER_X, NO_Y);
-        this.yes_text.text.visible = this.no_text.text.visible = false;
-        this.yes_text.shadow.visible = this.no_text.shadow.visible = false;
+    this.yes_text = this.base_window.set_text_in_position(
+      "Yes",
+      ANSWER_X,
+      YES_Y
+    );
+    this.no_text = this.base_window.set_text_in_position("No", ANSWER_X, NO_Y);
+    this.yes_text.text.visible = this.no_text.text.visible = false;
+    this.yes_text.shadow.visible = this.no_text.shadow.visible = false;
+  }
+
+  change_answer() {
+    if (this.answer_index === YES_Y) this.set_answer_index(NO_Y);
+    else this.set_answer_index(YES_Y);
+  }
+
+  set_answer_index(index: number) {
+    this.answer_index = index;
+
+    const cursor_x = CURSOR_X;
+    const cursor_y = index === YES_Y ? CURSOR_Y1 : CURSOR_Y2;
+
+    const tween_config = {
+      type: CursorManager.CursorTweens.POINT,
+      variant: PointVariants.NORMAL,
+    };
+    this.data.cursor_manager.move_to(
+      { x: cursor_x, y: cursor_y },
+      { animate: false, tween_config: tween_config }
+    );
+  }
+
+  update_position() {
+    this.group.x = this.game.camera.x + WIN_X;
+    this.group.y = this.game.camera.y + WIN_Y;
+  }
+
+  set_header() {
+    this.unset_header();
+    this.base_window.update_text(this.char.name, this.char_name);
+    this.base_window.update_text_position(
+      {
+        x: CHAR_NAME_X,
+        y: CHAR_NAME_Y,
+      },
+      this.char_name
+    );
+    this.base_window.update_text(this.item.name, this.item_name);
+    this.base_window.update_text_position(
+      {
+        x: ITEM_NAME_X,
+        y: ITEM_NAME_Y,
+      },
+      this.item_name
+    );
+    if (this.choosing_char && this.giving) {
+      this.base_window.update_text("Give it to whom?", this.action_text);
+      this.base_window.update_text_position(
+        {
+          x: ITEM_NAME_X,
+          y: ACTION_TEXT_Y,
+        },
+        this.action_text
+      );
+    } else if (this.choosing_char && !this.giving) {
+      this.base_window.update_text("Use it on whom?", this.action_text);
+      this.base_window.update_text_position(
+        {
+          x: ITEM_NAME_X,
+          y: ACTION_TEXT_Y,
+        },
+        this.action_text
+      );
+    } else if (this.asking_for_equip) {
+      this.yes_text.text.visible = this.no_text.text.visible = true;
+      this.yes_text.shadow.visible = this.no_text.shadow.visible = true;
+      this.base_window.update_text("Equip this item?", this.action_text);
+      this.base_window.update_text_position(
+        {
+          x: ACTION_TEXT_X,
+          y: ACTION_TEXT_Y,
+        },
+        this.action_text
+      );
     }
 
-    change_answer() {
-        if (this.answer_index === YES_Y) this.set_answer_index(NO_Y);
-        else this.set_answer_index(YES_Y);
+    this.base_window.define_internal_group(UseGiveItemWindow.ICON_GROUP_KEY);
+    const item = this.data.info.items_list[this.item.key_name];
+    this.base_window.make_item_obj(
+      this.item.key_name,
+      { x: ITEM_ICON_X, y: ITEM_ICON_Y },
+      {
+        broken: this.item_obj.broken,
+        equipped: this.item_obj.equipped,
+        quantity: item.carry_up_to_30 ? this.item_obj.quantity : undefined,
+        internal_group: UseGiveItemWindow.ICON_GROUP_KEY,
+      }
+    );
+  }
+
+  unset_header() {
+    this.base_window.update_text("", this.char_name);
+    this.base_window.update_text_position(
+      {
+        x: CHAR_NAME_X,
+        y: CHAR_NAME_Y,
+      },
+      this.char_name
+    );
+    this.base_window.update_text("", this.item_name);
+    this.base_window.update_text_position(
+      {
+        x: ITEM_NAME_X,
+        y: ITEM_NAME_Y,
+      },
+      this.item_name
+    );
+    this.base_window.update_text("", this.action_text);
+    this.base_window.update_text_position(
+      {
+        x: ACTION_TEXT_X,
+        y: ACTION_TEXT_Y,
+      },
+      this.action_text
+    );
+    this.yes_text.text.visible = this.no_text.text.visible = false;
+    this.yes_text.shadow.visible = this.no_text.shadow.visible = false;
+    this.base_window.destroy_internal_group(UseGiveItemWindow.ICON_GROUP_KEY);
+  }
+
+  on_give(equip?: boolean) {
+    if (equip === undefined) {
+      equip = this.answer_index === YES_Y ? true : false;
     }
 
-    set_answer_index(index: number) {
-        this.answer_index = index;
+    const chars_menu = this.item_menu.chars_menu;
+    const dest_char =
+      chars_menu.lines[chars_menu.current_line][chars_menu.selected_index];
+    const dest_item_obj = {
+      key_name: this.item_obj.key_name,
+      equipped: equip,
+      quantity: this.item_quantity_manager_window.window_open
+        ? this.item_quantity_manager_window.choosen_quantity
+        : this.item_obj.quantity,
+    };
 
-        const cursor_x = CURSOR_X;
-        const cursor_y = index === YES_Y ? CURSOR_Y1 : CURSOR_Y2;
-
-        const tween_config = {type: CursorManager.CursorTweens.POINT, variant: PointVariants.NORMAL};
-        this.data.cursor_manager.move_to({x: cursor_x, y: cursor_y}, {animate: false, tween_config: tween_config});
+    if (this.item_quantity_manager_window.window_open) {
+      this.item_quantity_manager_window.close();
     }
 
-    update_position() {
-        this.group.x = this.game.camera.x + WIN_X;
-        this.group.y = this.game.camera.y + WIN_Y;
-    }
+    this.char.remove_item(this.item_obj, dest_item_obj.quantity);
+    dest_char.add_item(dest_item_obj.key_name, dest_item_obj.quantity, equip);
 
-    set_header() {
-        this.unset_header();
-        this.base_window.update_text(this.char.name, this.char_name);
-        this.base_window.update_text_position(
-            {
-                x: CHAR_NAME_X,
-                y: CHAR_NAME_Y,
-            },
-            this.char_name
-        );
-        this.base_window.update_text(this.item.name, this.item_name);
-        this.base_window.update_text_position(
-            {
-                x: ITEM_NAME_X,
-                y: ITEM_NAME_Y,
-            },
-            this.item_name
-        );
-        if (this.choosing_char && this.giving) {
-            this.base_window.update_text("Give it to whom?", this.action_text);
-            this.base_window.update_text_position(
-                {
-                    x: ITEM_NAME_X,
-                    y: ACTION_TEXT_Y,
-                },
-                this.action_text
-            );
-        } else if (this.choosing_char && !this.giving) {
-            this.base_window.update_text("Use it on whom?", this.action_text);
-            this.base_window.update_text_position(
-                {
-                    x: ITEM_NAME_X,
-                    y: ACTION_TEXT_Y,
-                },
-                this.action_text
-            );
-        } else if (this.asking_for_equip) {
-            this.yes_text.text.visible = this.no_text.text.visible = true;
-            this.yes_text.shadow.visible = this.no_text.shadow.visible = true;
-            this.base_window.update_text("Equip this item?", this.action_text);
-            this.base_window.update_text_position(
-                {
-                    x: ACTION_TEXT_X,
-                    y: ACTION_TEXT_Y,
-                },
-                this.action_text
-            );
-        }
+    this.base_window.update_text("", this.action_text);
+    this.base_window.update_text_position(
+      {
+        x: ACTION_TEXT_X,
+        y: ACTION_TEXT_Y,
+      },
+      this.action_text
+    );
+    this.yes_text.text.visible = this.no_text.text.visible = false;
+    this.yes_text.shadow.visible = this.no_text.shadow.visible = false;
 
-        this.base_window.define_internal_group(UseGiveItemWindow.ICON_GROUP_KEY);
-        const item = this.data.info.items_list[this.item.key_name];
-        this.base_window.make_item_obj(
-            this.item.key_name,
-            {x: ITEM_ICON_X, y: ITEM_ICON_Y},
-            {
-                broken: this.item_obj.broken,
-                equipped: this.item_obj.equipped,
-                quantity: item.carry_up_to_30 ? this.item_obj.quantity : undefined,
-                internal_group: UseGiveItemWindow.ICON_GROUP_KEY,
+    const on_action_window_close = () => {
+      const char_index = this.data.info.party_data.members.indexOf(this.char);
+      this.item_menu.item_options_window.close(() => {
+        this.item_menu.item_options_window.close_callback(true, char_index);
+      });
+      this.close();
+    };
+
+    const action_window_text = equip ? "Equipped it." : "Given.";
+    this.item_menu.item_options_window.open_action_message_window(
+      action_window_text,
+      () => {
+        if (equip && this.item.curses_when_equipped) {
+          this.item_menu.item_options_window.open_action_message_window(
+            "You were cursed!",
+            () => {
+              on_action_window_close();
             }
-        );
-    }
-
-    unset_header() {
-        this.base_window.update_text("", this.char_name);
-        this.base_window.update_text_position(
-            {
-                x: CHAR_NAME_X,
-                y: CHAR_NAME_Y,
-            },
-            this.char_name
-        );
-        this.base_window.update_text("", this.item_name);
-        this.base_window.update_text_position(
-            {
-                x: ITEM_NAME_X,
-                y: ITEM_NAME_Y,
-            },
-            this.item_name
-        );
-        this.base_window.update_text("", this.action_text);
-        this.base_window.update_text_position(
-            {
-                x: ACTION_TEXT_X,
-                y: ACTION_TEXT_Y,
-            },
-            this.action_text
-        );
-        this.yes_text.text.visible = this.no_text.text.visible = false;
-        this.yes_text.shadow.visible = this.no_text.shadow.visible = false;
-        this.base_window.destroy_internal_group(UseGiveItemWindow.ICON_GROUP_KEY);
-    }
-
-    on_give(equip?: boolean) {
-        if (equip === undefined) {
-            equip = this.answer_index === YES_Y ? true : false;
+          );
+        } else {
+          on_action_window_close();
         }
+      }
+    );
+  }
 
-        const chars_menu = this.item_menu.chars_menu;
-        const dest_char = chars_menu.lines[chars_menu.current_line][chars_menu.selected_index];
-        const dest_item_obj = {
-            key_name: this.item_obj.key_name,
-            equipped: equip,
-            quantity: this.item_quantity_manager_window.window_open
-                ? this.item_quantity_manager_window.choosen_quantity
-                : this.item_obj.quantity,
-        };
+  init_give(dest_char: MainChar) {
+    const chars_menu = this.item_menu.chars_menu;
+    this.asking_for_equip = this.item.equipable_chars.includes(
+      dest_char.key_name
+    );
 
-        if (this.item_quantity_manager_window.window_open) {
-            this.item_quantity_manager_window.close();
-        }
+    if (this.asking_for_equip) {
+      this.set_header();
+      this.set_answer_index(YES_Y);
 
-        this.char.remove_item(this.item_obj, dest_item_obj.quantity);
-        dest_char.add_item(dest_item_obj.key_name, dest_item_obj.quantity, equip);
+      const controls = [
+        {
+          buttons: Button.UP,
+          on_down: this.change_answer.bind(this),
+          sfx: { down: "menu/move" },
+        },
+        {
+          buttons: Button.DOWN,
+          on_down: this.change_answer.bind(this),
+          sfx: { down: "menu/move" },
+        },
+        {
+          buttons: Button.A,
+          on_down: this.on_give.bind(this),
+          sfx: { down: "menu/positive_3" },
+        },
+        {
+          buttons: Button.B,
+          on_down: this.on_give.bind(this, false),
+          sfx: { down: "menu/negative" },
+        },
+      ];
+      this.data.control_manager.add_controls(controls, {
+        loop_config: { vertical: true },
+      });
+    } else {
+      if (this.item_obj.quantity > 1) {
+        const dest_char =
+          chars_menu.lines[chars_menu.current_line][chars_menu.selected_index];
 
-        this.base_window.update_text("", this.action_text);
-        this.base_window.update_text_position(
-            {
-                x: ACTION_TEXT_X,
-                y: ACTION_TEXT_Y,
-            },
-            this.action_text
+        this.item_quantity_manager_window.open(
+          this.item_obj,
+          this.item,
+          this.char,
+          undefined,
+          dest_char
         );
-        this.yes_text.text.visible = this.no_text.text.visible = false;
-        this.yes_text.shadow.visible = this.no_text.shadow.visible = false;
+        this.item_quantity_manager_window.grant_control(() => {
+          this.item_quantity_manager_window.close();
+          this.choosing_character();
+        }, this.on_give.bind(this));
+      } else {
+        this.on_give(false);
+      }
+    }
+  }
 
-        const on_action_window_close = () => {
-            const char_index = this.data.info.party_data.members.indexOf(this.char);
+  init_use(dest_char: MainChar) {
+    const ability = this.data.info.abilities_list[this.item.use_ability];
+    const ability_used = this.item_menu.item_choose_window.cast_ability(
+      this.char,
+      dest_char,
+      ability,
+      this.item_menu.description_window,
+      this.item_menu.description_window_text
+    );
+    if (ability_used) {
+      this.char.remove_item(this.item_obj, 1);
+
+      this.data.cursor_manager.hide();
+      this.data.control_manager.add_controls([
+        {
+          buttons: Button.A,
+          on_down: () => {
+            this.item_menu.set_description_window_text();
+            const char_index = this.data.info.party_data.members.indexOf(
+              this.char
+            );
             this.item_menu.item_options_window.close(() => {
-                this.item_menu.item_options_window.close_callback(true, char_index);
+              this.item_menu.item_options_window.close_callback(
+                true,
+                char_index
+              );
             });
             this.close();
-        };
-
-        const action_window_text = equip ? "Equipped it." : "Given.";
-        this.item_menu.item_options_window.open_action_message_window(action_window_text, () => {
-            if (equip && this.item.curses_when_equipped) {
-                this.item_menu.item_options_window.open_action_message_window("You were cursed!", () => {
-                    on_action_window_close();
-                });
-            } else {
-                on_action_window_close();
-            }
-        });
+          },
+          sfx: { down: "menu/positive_3" },
+        },
+      ]);
+    } else {
+      this.choosing_character(false);
     }
+  }
 
-    init_give(dest_char: MainChar) {
-        const chars_menu = this.item_menu.chars_menu;
-        this.asking_for_equip = this.item.equipable_chars.includes(dest_char.key_name);
+  on_character_select() {
+    this.choosing_char = false;
+    this.item_menu.choosing_destination = false;
 
-        if (this.asking_for_equip) {
-            this.set_header();
-            this.set_answer_index(YES_Y);
+    const chars_menu = this.item_menu.chars_menu;
+    const dest_char =
+      chars_menu.lines[chars_menu.current_line][chars_menu.selected_index];
 
-            const controls = [
-                {buttons: Button.UP, on_down: this.change_answer.bind(this), sfx: {down: "menu/move"}},
-                {buttons: Button.DOWN, on_down: this.change_answer.bind(this), sfx: {down: "menu/move"}},
-                {buttons: Button.A, on_down: this.on_give.bind(this), sfx: {down: "menu/positive_3"}},
-                {buttons: Button.B, on_down: this.on_give.bind(this, false), sfx: {down: "menu/negative"}},
-            ];
-            this.data.control_manager.add_controls(controls, {
-                loop_config: {vertical: true},
-            });
-        } else {
-            if (this.item_obj.quantity > 1) {
-                const dest_char = chars_menu.lines[chars_menu.current_line][chars_menu.selected_index];
-
-                this.item_quantity_manager_window.open(this.item_obj, this.item, this.char, undefined, dest_char);
-                this.item_quantity_manager_window.grant_control(() => {
-                    this.item_quantity_manager_window.close();
-                    this.choosing_character();
-                }, this.on_give.bind(this));
-            } else {
-                this.on_give(false);
-            }
-        }
+    if (this.giving) {
+      this.init_give(dest_char);
+    } else {
+      this.init_use(dest_char);
     }
+  }
 
-    init_use(dest_char: MainChar) {
-        const ability = this.data.info.abilities_list[this.item.use_ability];
-        const ability_used = this.item_menu.item_choose_window.cast_ability(
-            this.char,
-            dest_char,
-            ability,
-            this.item_menu.description_window,
-            this.item_menu.description_window_text
-        );
-        if (ability_used) {
-            this.char.remove_item(this.item_obj, 1);
+  choosing_character(select_char: boolean = true) {
+    this.choosing_char = true;
+    this.set_header();
 
-            this.data.cursor_manager.hide();
-            this.data.control_manager.add_controls([
-                {
-                    buttons: Button.A,
-                    on_down: () => {
-                        this.item_menu.set_description_window_text();
-                        const char_index = this.data.info.party_data.members.indexOf(this.char);
-                        this.item_menu.item_options_window.close(() => {
-                            this.item_menu.item_options_window.close_callback(true, char_index);
-                        });
-                        this.close();
-                    },
-                    sfx: {down: "menu/positive_3"},
-                },
-            ]);
-        } else {
-            this.choosing_character(false);
-        }
+    this.item_menu.choosing_destination = true;
+    if (select_char) {
+      this.item_menu.chars_menu.select_char(
+        this.item_menu.chars_menu.selected_index
+      );
     }
+    this.item_menu.chars_menu.grant_control(
+      this.close.bind(this),
+      this.on_character_select.bind(this)
+    );
 
-    on_character_select() {
-        this.choosing_char = false;
-        this.item_menu.choosing_destination = false;
+    this.item_menu.item_overview_window.show(undefined, false);
+    this.item_menu.shift_item_overview(true);
+  }
 
-        const chars_menu = this.item_menu.chars_menu;
-        const dest_char = chars_menu.lines[chars_menu.current_line][chars_menu.selected_index];
+  open(
+    item_obj: ItemSlot,
+    item: Item,
+    char: MainChar,
+    item_menu: MainItemMenu,
+    giving: boolean,
+    close_callback?: Function,
+    open_callback?: Function
+  ) {
+    this.item_obj = item_obj;
+    this.item = item;
+    this.char = char;
 
-        if (this.giving) {
-            this.init_give(dest_char);
-        } else {
-            this.init_use(dest_char);
-        }
+    this.choosing_char = false;
+    this.asking_for_equip = false;
+    this.giving = giving;
+    this.item_menu = item_menu;
+    this.item_quantity_manager_window = this.item_menu.item_quant_win;
+
+    this.answer_index = 0;
+    if (this.asking_for_equip) {
+      this.set_answer_index(YES_Y);
     }
+    this.set_header();
+    this.update_position();
+    this.close_callback = close_callback;
+    this.base_window.show(() => {
+      this.window_open = true;
+      this.window_active = true;
+      if (open_callback) {
+        open_callback();
+      }
+    }, false);
 
-    choosing_character(select_char: boolean = true) {
-        this.choosing_char = true;
-        this.set_header();
+    this.choosing_character();
+  }
 
-        this.item_menu.choosing_destination = true;
-        if (select_char) {
-            this.item_menu.chars_menu.select_char(this.item_menu.chars_menu.selected_index);
-        }
-        this.item_menu.chars_menu.grant_control(this.close.bind(this), this.on_character_select.bind(this));
+  close() {
+    this.data.cursor_manager.hide();
+    this.unset_header();
+    this.base_window.close(() => {
+      this.window_open = false;
+      this.window_active = false;
+      if (this.close_callback) {
+        this.close_callback();
+      }
+    }, false);
+  }
 
-        this.item_menu.item_overview_window.show(undefined, false);
-        this.item_menu.shift_item_overview(true);
-    }
+  active() {
+    this.window_active = true;
+    this.data.cursor_manager.hide();
+  }
 
-    open(
-        item_obj: ItemSlot,
-        item: Item,
-        char: MainChar,
-        item_menu: MainItemMenu,
-        giving: boolean,
-        close_callback?: Function,
-        open_callback?: Function
-    ) {
-        this.item_obj = item_obj;
-        this.item = item;
-        this.char = char;
-
-        this.choosing_char = false;
-        this.asking_for_equip = false;
-        this.giving = giving;
-        this.item_menu = item_menu;
-        this.item_quantity_manager_window = this.item_menu.item_quant_win;
-
-        this.answer_index = 0;
-        if (this.asking_for_equip) {
-            this.set_answer_index(YES_Y);
-        }
-        this.set_header();
-        this.update_position();
-        this.close_callback = close_callback;
-        this.base_window.show(() => {
-            this.window_open = true;
-            this.window_active = true;
-            if (open_callback) {
-                open_callback();
-            }
-        }, false);
-
-        this.choosing_character();
-    }
-
-    close() {
-        this.data.cursor_manager.hide();
-        this.unset_header();
-        this.base_window.close(() => {
-            this.window_open = false;
-            this.window_active = false;
-            if (this.close_callback) {
-                this.close_callback();
-            }
-        }, false);
-    }
-
-    active() {
-        this.window_active = true;
-        this.data.cursor_manager.hide();
-    }
-
-    deactive() {
-        this.window_active = false;
-        this.data.cursor_manager.hide();
-    }
+  deactive() {
+    this.window_active = false;
+    this.data.cursor_manager.hide();
+  }
 }
