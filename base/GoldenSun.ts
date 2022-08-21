@@ -145,7 +145,6 @@ export class GoldenSun {
     public super_group: Phaser.Group = null;
 
     constructor() {
-        this.init_electron();
         const config: Phaser.IGameConfig = {
             width: numbers.GAME_WIDTH,
             height: numbers.GAME_HEIGHT,
@@ -162,16 +161,6 @@ export class GoldenSun {
             },
         };
         this.game = new Phaser.Game(config);
-    }
-
-    /**
-     * If it's running under electron's engine, initializes it.
-     */
-    private init_electron() {
-        this.electron_app = (window as any).is_electron_env ?? false;
-        if (this.electron_app) {
-            this.ipcRenderer = (window as any).ipcRenderer;
-        }
     }
 
     /**
@@ -259,17 +248,13 @@ export class GoldenSun {
         this.game.camera.resetFX();
         this.loading_what = "";
 
-        //initializes start menu
-        this.start_menu = new StartMenu(this.game, this);
-        this.start_menu.open(snapshot => {
-            this.audio.stop_bgm();
+        //initializes the snapshot manager
+        // Always set the initial snapshot to null since we arent saving files
+        this.snapshot_manager = new Snapshot(this.game, this, null);
 
-            //initializes the snapshot manager
-            this.snapshot_manager = new Snapshot(this.game, this, snapshot);
+        //initializes the game
+        this.initialize_game();
 
-            //initializes the game
-            this.initialize_game();
-        });
     }
 
     /**
@@ -317,12 +302,12 @@ export class GoldenSun {
         }
 
         //configs map layers: creates sprites, interactable objects and npcs, lists events and sets the map layers
-        const map_key_name = snapshot?.map_data.key_name ?? this.dbs.init_db.map_key_name;
+        const map_key_name = this.dbs.init_db.map_key_name;
         const map = this.info.maps_list[map_key_name];
-        const initial_collision_layer = snapshot?.map_data.collision_layer ?? this.dbs.init_db.collision_layer;
+        const initial_collision_layer = this.dbs.init_db.collision_layer;
         this.map = await map.mount_map(initial_collision_layer, snapshot?.map_data.encounter_cumulator);
-        const hero_initial_x = snapshot?.map_data.pc.position.x ?? this.dbs.init_db.x_tile_position;
-        const hero_initial_y = snapshot?.map_data.pc.position.y ?? this.dbs.init_db.y_tile_position;
+        const hero_initial_x = this.dbs.init_db.x_tile_position;
+        const hero_initial_y = this.dbs.init_db.y_tile_position;
         this.map.set_map_bounds(hero_initial_x, hero_initial_y);
 
         //initializes the controllable hero
@@ -333,8 +318,8 @@ export class GoldenSun {
             hero_key_name,
             hero_initial_x,
             hero_initial_y,
-            snapshot ? base_actions.IDLE : this.dbs.init_db.initial_action,
-            snapshot?.map_data.pc.direction ?? this.dbs.init_db.initial_direction,
+            this.dbs.init_db.initial_action,
+            this.dbs.init_db.initial_direction,
             this.dbs.npc_db[hero_key_name].walk_speed,
             this.dbs.npc_db[hero_key_name].dash_speed,
             this.dbs.npc_db[hero_key_name].climb_speed
@@ -357,11 +342,11 @@ export class GoldenSun {
         this.main_menu = initialize_menu(this.game, this);
 
         //set initial zoom
-        this.scale_factor = snapshot?.scale_factor ?? this.scale_factor;
+        this.scale_factor = this.scale_factor;
         this.game.scale.setupScale(this.scale_factor * numbers.GAME_WIDTH, this.scale_factor * numbers.GAME_HEIGHT);
         window.dispatchEvent(new Event("resize"));
 
-        this.fullscreen = snapshot?.full_screen ?? false;
+        this.fullscreen = false;
         if (this.fullscreen) {
             this.set_fullscreen_mode(false);
         }
@@ -373,8 +358,6 @@ export class GoldenSun {
         this.initialize_psynergy_controls();
 
         this.map.fire_game_events();
-
-        this.snapshot_manager.clear_snapshot();
     }
 
     /**
@@ -494,7 +477,7 @@ export class GoldenSun {
      * @param allow_climbing if true, climbing won't be considered.
      * @returns if true, the hero is allowed to move.
      */
-    hero_movement_allowed(allow_climbing = true) {
+    public hero_movement_allowed(allow_climbing = true) {
         return !(
             this.hero.in_action(allow_climbing) ||
             this.menu_open ||
@@ -564,9 +547,6 @@ export class GoldenSun {
     }
 
     private check_fps() {
-        if (this.electron_app) {
-            return;
-        }
         if (!this.showing_fps_banner && this.game.time.fps < numbers.MIN_FPS) {
             (document.querySelector("#fps-warning") as HTMLElement).style.display = "block";
             this.showing_fps_banner = true;
