@@ -22,24 +22,31 @@
   "scripts": {
     "start": "npx webpack-dev-server",
     "start-desktop": "npm run build && npx electron ./electron/main.js",
-    "build": "npx webpack",
+    "build": "node scripts/build.js",
     "format-check": "npx prettier --check \"base/**/*.ts\"",
     "format": "npx prettier --write \"base/**/*.ts\"",
     "docs": "node scripts/generate_docs.js",
-    "postinstall": "npx husky install && npm dedupe",
+    "_postinstall": "npx husky install && npm dedupe",
     "prepublish": "npx pinst --disable",
-    "postpublish": "npx pinst --enable"
+    "postpublish": "npx pinst --enable",
+    "test": "jest"
   },
   "engines": {
     "npm": "^7"
   },
   "devDependencies": {
+    "@types/jest": "^28.1.7",
     "@types/lodash": "~4.14",
     "@types/mathjs": "~6.0",
+    "@types/mocha": "~9.1.1",
     "electron": "~15.5",
+    "esbuild": "~0.15.5",
     "husky": "^5",
+    "jest": "~28.1.3",
+    "mocha": "^10.0.0",
     "pinst": "~2.1",
     "prettier": "~2.6",
+    "ts-jest": "~28.0.8",
     "ts-loader": "~8.3",
     "typedoc": "~0.22",
     "typescript": "~4.6",
